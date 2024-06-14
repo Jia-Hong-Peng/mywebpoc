@@ -15,4 +15,24 @@
     <button type="submit">Upload</button>
 </form>
 
+
+    <h1>Image Gallery</h1>
+    <div id="gallery"></div>
+
+    <script>
+        async function fetchImages() {
+            const response = await fetch('/Image/images');
+            const imageUrls = await response.json();
+
+            const gallery = document.getElementById('gallery');
+            imageUrls.forEach(url => {
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.width = '200px';
+                gallery.appendChild(img);
+            });
+        }
+
+        fetchImages();
+    </script>
 </div>
