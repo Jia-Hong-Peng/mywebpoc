@@ -23,6 +23,8 @@
         <input type="number" id="initialDoge" value="1000" min="1"><br><br>
         <label for="spotRatio">現貨部位比例 (%)：</label>
         <input type="number" id="spotRatio" value="70" min="0" max="100"><br><br>
+        <label for="adjustmentThreshold">倉位調整閾值 (%)：</label>
+        <input type="number" id="adjustmentThreshold" value="5" min="0.1" step="0.1" max="20"><br><br>
         <label>每週 DOGE 價格：</label>
         <div id="priceInputs"></div>
         <br>
@@ -66,7 +68,8 @@
             });
         }
         window.onload = generatePriceInputs;
-        function tradingStrategy(prices, initialDoge, initialUsdt, spotRatio) {
+
+        function tradingStrategy(prices, initialDoge, initialUsdt, spotRatio, threshold) {
             let dogeSpot = initialDoge * spotRatio;
             let dogeDual = initialDoge * (1 - spotRatio);
             let usdtDual = initialUsdt;
@@ -79,7 +82,7 @@
                 const currentDualValue = dogeDual * price + usdtDual;
                 const spotDiff = (currentSpotValue - targetSpotValue) / totalValue;
                 const dualDiff = (currentDualValue - targetDualValue) / totalValue;
-                const needsAdjustment = Math.abs(spotDiff) > 0.05;
+                const needsAdjustment = Math.abs(spotDiff) > threshold / 100;
                 let adjustmentDetails = "";
                 if (needsAdjustment) {
                     if (currentSpotValue > targetSpotValue) {
@@ -106,7 +109,7 @@
                             } else {
                                 const additionalDogeBought = usdtDual / price;
                                 dogeSpot += additionalDogeBought;
-                                adjustmentDetails = `從現金部位買入 ${dogeBought.toFixed(2)} DOGE 和 ${additionalDogeBought.toFixed(2)} DOGE (使用所有 USDT) 到現貨部位`;
+                                adjustmentDetails = `從現金部位買入 ${dogeBought.toFixed(2)} DOGE 和 ${additionalDogeBought.toFixed(2)} DOGE (使用所有 USDT) 刀現貨部位`;
                                 dogeDual = 0;
                                 usdtDual = 0;
                             }
@@ -171,12 +174,17 @@
         function runSimulation() {
             const initialDoge = parseFloat(document.getElementById('initialDoge').value);
             const spotRatio = parseFloat(document.getElementById('spotRatio').value) / 100;
+            const adjustmentThreshold = parseFloat(document.getElementById('adjustmentThreshold').value);
             if (isNaN(initialDoge) || initialDoge <= 0) {
                 alert('請輸入有效的起始 DOGE 數量');
                 return;
             }
             if (isNaN(spotRatio) || spotRatio < 0 || spotRatio > 1) {
                 alert('請輸入有效的現貨部位比例（0-100）');
+                return;
+            }
+            if (isNaN(adjustmentThreshold) || adjustmentThreshold < 0.1 || adjustmentThreshold > 20) {
+                alert('請輸入有效的倉位調整閾值（0.1-20）');
                 return;
             }
             const prices = [];
@@ -188,7 +196,7 @@
                 }
                 prices.push(price);
             }
-            const results = tradingStrategy(prices, initialDoge, 0, spotRatio);
+            const results = tradingStrategy(prices, initialDoge, 0, spotRatio, adjustmentThreshold);
             let output = "";
             for (const result of results) {
                 output += `第${result.week}週\n`;
