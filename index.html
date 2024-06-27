@@ -31,10 +31,7 @@
     <pre id="output"></pre>
 
     <script>
-        // 初始價格序列
         const initialPrices = [0.12, 0.16, 0.13, 0.17, 0.15, 0.2, 0.18, 0.25, 0.19, 0.3, 0.24, 0.5, 0.3, 0.7, 0.4, 0.99, 0.6, 1.2, 0.9, 1];
-
-        // 生成價格輸入框
         function generatePriceInputs() {
             const container = document.getElementById('priceInputs');
             initialPrices.forEach((price, index) => {
@@ -48,31 +45,22 @@
                 container.appendChild(input);
             });
         }
-
-        // 頁面加載時生成價格輸入框
         window.onload = generatePriceInputs;
-
         function tradingStrategy(prices, initialDoge, initialUsdt, spotRatio) {
             let dogeSpot = initialDoge * spotRatio;
             let dogeDual = initialDoge * (1 - spotRatio);
             let usdtDual = initialUsdt;
             let interestProfit = 0;  // 累計利息純益
-            
             function adjustPositions(dogeSpot, dogeDual, usdtDual, price, spotRatio) {
                 const totalValue = dogeSpot * price + dogeDual * price + usdtDual;
                 const targetSpotValue = totalValue * spotRatio;
                 const targetDualValue = totalValue * (1 - spotRatio);
-                
                 const currentSpotValue = dogeSpot * price;
                 const currentDualValue = dogeDual * price + usdtDual;
-                
                 const spotDiff = (currentSpotValue - targetSpotValue) / totalValue;
                 const dualDiff = (currentDualValue - targetDualValue) / totalValue;
-                
                 const needsAdjustment = Math.abs(spotDiff) > 0.05;
-                
                 let adjustmentDetails = "";
-                
                 if (needsAdjustment) {
                     if (currentSpotValue > targetSpotValue) {
                         const excessDoge = (currentSpotValue - targetSpotValue) / price;
@@ -105,54 +93,39 @@
                         }
                     }
                 }
-                
                 return {dogeSpot, dogeDual, usdtDual, needsAdjustment, spotDiff, dualDiff, adjustmentDetails};
             }
-
             const results = [];
             let prevPrice = prices[0];
-            
             for (let week = 0; week < prices.length; week++) {
                 const price = prices[week];
-                
-                // Calculate interest
                 const usdtInterest = usdtDual * 0.5 / 52;
                 const dogeInterest = dogeDual * 0.5 / 52;
-                
-                // 將利息轉換為 USDT 並加入利息純益
                 interestProfit += usdtInterest + dogeInterest * price;
-                
-                // Dual-currency financial product simulation
                 let dogeDualSuccess = false;
                 let usdtDualSuccess = false;
-                
                 if (usdtDual > 0) {
-                    if (price < prevPrice * 0.95) {  // USDT position: buy DOGE if price drops 5%
+                    if (price < prevPrice * 0.95) {
                         const dogeBought = usdtDual / price;
                         dogeDual += dogeBought;
                         usdtDual = 0;
                         usdtDualSuccess = true;
                     }
                 } else if (dogeDual > 0) {
-                    if (price > prevPrice * 1.05) {  // DOGE position: sell DOGE if price increases 5%
+                    if (price > prevPrice * 1.05) {
                         const usdtEarned = dogeDual * price;
                         usdtDual += usdtEarned;
                         dogeDual = 0;
                         dogeDualSuccess = true;
                     }
                 }
-
-                // Adjust positions
                 const {dogeSpot: newDogeSpot, dogeDual: newDogeDual, usdtDual: newUsdtDual, needsAdjustment, spotDiff, dualDiff, adjustmentDetails} = 
                     adjustPositions(dogeSpot, dogeDual, usdtDual, price, spotRatio);
-                
                 dogeSpot = newDogeSpot;
                 dogeDual = newDogeDual;
                 usdtDual = newUsdtDual;
-
                 const totalValue = dogeSpot * price + dogeDual * price + usdtDual;
                 const fullDogeValue = initialDoge * price;
-                
                 results.push({
                     week: week + 1,
                     price,
@@ -171,17 +144,13 @@
                     dualDiff,
                     adjustmentDetails
                 });
-                
                 prevPrice = price;
             }
-
             return results;
         }
-
         function runSimulation() {
             const initialDoge = parseFloat(document.getElementById('initialDoge').value);
             const spotRatio = parseFloat(document.getElementById('spotRatio').value) / 100;
-            
             if (isNaN(initialDoge) || initialDoge <= 0) {
                 alert('請輸入有效的起始 DOGE 數量');
                 return;
@@ -190,7 +159,6 @@
                 alert('請輸入有效的現貨部位比例（0-100）');
                 return;
             }
-
             const prices = [];
             for (let i = 0; i < initialPrices.length; i++) {
                 const price = parseFloat(document.getElementById(`price${i}`).value);
@@ -200,53 +168,43 @@
                 }
                 prices.push(price);
             }
-
             const results = tradingStrategy(prices, initialDoge, 0, spotRatio);
-
             let output = "";
-            
-            // Print results
             for (const result of results) {
                 output += `第${result.week}週\n`;
-                output += `DOGE 價格 $${result.price.toFixed(4)}:\n`;
-                output += `DOGE雙幣理財是否成功: ${result.dogeDualSuccess ? '是' : '否'}\n`;
-                output += `USDT雙幣理財是否成功: ${result.usdtDualSuccess ? '是' : '否'}\n`;
-                output += `${(spotRatio * 100).toFixed(0)}%現貨部位: ${result.dogeSpot.toFixed(2)} DOGE (價值USDT: $${(result.dogeSpot * result.price).toFixed(2)})\n`;
-                output += `${((1 - spotRatio) * 100).toFixed(0)}% 現金部位 (雙幣理財):\n`;
-                output += `DOGE: ${result.dogeDual.toFixed(2)} (價值USDT: $${(result.dogeDual * result.price).toFixed(2)})\n`;
-                output += `USDT: ${result.usdtDual.toFixed(2)} (價值DOGE: ${(result.usdtDual / result.price).toFixed(2)})\n`;
-                output += `本週利息: $${(result.usdtInterest + result.dogeInterest * result.price).toFixed(4)}\n`;
-                output += `累計利息純益: $${result.interestProfit.toFixed(4)}\n`;
-                output += `策略總值 (不含利息): $${(result.totalValue - result.interestProfit).toFixed(2)}\n`;
-                output += `策略總值 (含利息): $${result.totalValue.toFixed(2)}\n`;
-                output += `若全倉現貨: $${result.fullDogeValue.toFixed(2)}\n`;
-                
-                const strategyReturnUSD = ((result.totalValue - result.interestProfit) / (initialDoge * prices[0]) - 1) * 100;
-                const fullDogeReturnUSD = (result.fullDogeValue / (initialDoge * prices[0]) - 1) * 100;
-                const strategyReturnDOGE = ((result.dogeSpot + result.dogeDual + result.usdtDual / result.price) / initialDoge - 1) * 100;
-                output += `策略收益率 (USD，不含利息): ${strategyReturnUSD.toFixed(2)}%\n`;
-                output += `策略收益率 (DOGE): ${strategyReturnDOGE.toFixed(2)}%\n`;
-                output += `若全倉收益率: ${fullDogeReturnUSD.toFixed(2)}%\n`;
-                output += `策略vs全倉 (USD，不含利息): ${(strategyReturnUSD - fullDogeReturnUSD).toFixed(2)}%\n`;
-                
-                const totalValue = result.totalValue - result.interestProfit;
-                const spotValue = result.dogeSpot * result.price;
-                const dualValue = result.dogeDual * result.price + result.usdtDual;
-                const currentSpotRatio = (spotValue / totalValue) * 100;
-                const currentDualRatio = (dualValue / totalValue) * 100;
-                
-                output += `顯示目前倉位比例:\n`;
-                output += `現貨倉位: ${currentSpotRatio.toFixed(2)}%\n`;
-                output += `現金倉位 (雙幣理財): ${currentDualRatio.toFixed(2)}%\n`;
-                output += `現貨倉位差距: ${(Math.abs(result.spotDiff) * 100).toFixed(2)}%\n`;
-                output += `現金倉位差距: ${(Math.abs(result.dualDiff) * 100).toFixed(2)}%\n`;
-                output += `是否觸發倉位調整: ${result.needsAdjustment ? '是' : '否'}\n`;
+                output += `DOGE 價格: $${result.price.toFixed(4)}\n\n`;
+                output += `交易策略結果:\n`;
+                output += `- DOGE雙幣理財是否成功: ${result.dogeDualSuccess ? '是' : '否'}\n`;
+                output += `- USDT雙幣理財是否成功: ${result.usdtDualSuccess ? '是' : '否'}\n\n`;
+                output += `倉位狀態:\n`;
+                output += `- ${Math.round(spotRatio * 100)}% 現貨部位: ${result.dogeSpot.toFixed(2)} DOGE\n`;
+                output += `  - 價值 (USDT): $${(result.dogeSpot * result.price).toFixed(2)}\n`;
+                output += `- ${Math.round((1 - spotRatio) * 100)}% 現金部位 (雙幣理財):\n`;
+                output += `  - DOGE: ${result.dogeDual.toFixed(2)} (價值USDT: $${(result.dogeDual * result.price).toFixed(2)})\n`;
+                output += `  - USDT: ${result.usdtDual.toFixed(2)} (折合DOGE: ${(result.usdtDual / result.price).toFixed(2)})\n\n`;
+                output += `利息純益:\n`;
+                output += `- 本週利息 (USDT): $${(result.usdtInterest + result.dogeInterest * result.price).toFixed(4)}\n`;
+                output += `- 累計利息純益 (USDT): $${result.interestProfit.toFixed(4)}\n\n`;
+                output += `策略總值分析:\n`;
+                output += `- 策略總值 (不含利息): $${(result.totalValue - result.interestProfit).toFixed(2)}\n`;
+                output += `- 策略總值 (含利息): $${result.totalValue.toFixed(2)}\n`;
+                output += `- 若全倉現貨總值: $${result.fullDogeValue.toFixed(2)}\n\n`;
+                output += `收益率分析:\n`;
+                output += `- 策略收益率 (USD，不含利息): ${(100 * ((result.totalValue - result.interestProfit) / (initialDoge * result.price) - 1)).toFixed(2)}%\n`;
+                output += `- 策略收益率 (DOGE): ${(100 * ((result.dogeSpot + result.dogeDual + result.usdtDual / result.price) / initialDoge - 1)).toFixed(2)}%\n`;
+                output += `- 若全倉收益率 (USD): ${(100 * (result.fullDogeValue / (initialDoge * result.price) - 1)).toFixed(2)}%\n`;
+                output += `- 策略vs全倉 (USD，不含利息): ${(100 * ((result.totalValue - result.interestProfit) / (initialDoge * result.price) - result.fullDogeValue / (initialDoge * result.price))).toFixed(2)}%\n\n`;
+                output += `倉位比例及調整:\n`;
+                output += `- 現貨倉位: ${((result.dogeSpot * result.price) / result.totalValue * 100).toFixed(2)}%\n`;
+                output += `- 現金倉位 (雙幣理財): ${((result.dogeDual * result.price + result.usdtDual) / result.totalValue * 100).toFixed(2)}%\n`;
+                output += `- 現貨倉位差距: ${(Math.abs(result.spotDiff) * 100).toFixed(2)}%\n`;
+                output += `- 現金倉位差距: ${(Math.abs(result.dualDiff) * 100).toFixed(2)}%\n`;
+                output += `- 是否觸發倉位調整: ${result.needsAdjustment ? '是' : '否'}\n`;
                 if (result.needsAdjustment) {
-                    output += `倉位調整細節: ${result.adjustmentDetails}\n`;
+                    output += `- 倉位調整細節: ${result.adjustmentDetails}\n`;
                 }
                 output += '\n';
             }
-
             document.getElementById('output').textContent = output;
         }
     </script>
